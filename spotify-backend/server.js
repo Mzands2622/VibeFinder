@@ -1,5 +1,6 @@
 require('dotenv').config()
 const express = require('express');
+const axios = require('axios');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 
@@ -21,54 +22,43 @@ app.get('/events', async (req, res) => {
     const ticketMasterAPIKey = process.env.TICKETMASTER_API_KEY;
 
     try {
-        const url = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${ticketMasterAPIKey}&keyword=${artist_name}`
+        const response = await axios.get('https://app.ticketmaster.com/discovery/v2/events.json', {
+            params: {
+                apikey: ticketMasterAPIKey,
+                keyword: artist_name
+            }
+        });
 
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error("Tickemaster API Error!");
-        }
-
-        let final_data;
-
-        if (data._embedded) {
-            final_data = data;
+        if (response.data._embedded && response.data._embedded.events) {
+            res.json(response.data._embedded.events);
         } else {
-            final_data = {_embedded: {eventss: []}};
+            res.json([]);
         }
-
-        res.json(final_data);
-
-
     } catch (error) {
         res.status(500).json({error: "Failed to fetch events!"});
     }
 });
 
 
+
 app.get('/token', async (req, res) => {
     try {
-        const response = await fetch('https://accounts.spotify.com/api/token', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                Authorization: `Basic ${basicAuth}`,
-            },
-            body: new URLSearchParams({grant_type: 'client_credentials'}),
-        });
-
-        if (!response.ok) {
-            throw new Error("Spotify API Error!");
-        }
-
-        const data = await response.json();
-        res.json(data);
+        const response = await axios.post(
+            'https://accounts.spotify.com/api/token',
+            new URLSearchParams({grant_type: 'client_credentials'}),
+            {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    Authorization: `Basic ${basicAuth}`,
+                },
+            }
+        );
+        res.json(response.data)
     } catch (error) {
-        res.status(500).json({error: 'Failed to fetch Spotify token'});
+        console.error('Error fetching token!');
+        res.status(500).json({error: 'Failed to fetch token'});
     }
 })
-
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

@@ -1,6 +1,8 @@
 // Global variables
 let current_section = 'header-section';
-let all_sections = ['header-section', 'story-section', 'testimonials-section', 'signup-section', 'genre-section', 'playlist-section', 'events-section'];
+let all_sections = ['header-section', 'signup-section', 'genre-section', 'playlist-section', 'events-section', 'story-section', 'testimonials-section'];
+let selectedGenres = [];
+
 
 // Scrolling Logic
 function scrollToSection(section_id) {
@@ -58,32 +60,6 @@ document.querySelectorAll('.arrow').forEach(next_arrow => {
 });
 
 // Spotify API Logic
-let selectedGenres = [];
-
-let all_pills = document.querySelectorAll('.genre-pill');
-all_pills.forEach(function(next_pill) {
-    next_pill.addEventListener('click', function() {
-
-        let next_genre = next_pill.getAttribute('data-value');
-
-        if (selectedGenres.indexOf(next_genre) != -1) {
-            let new_genres = [];
-            for (let i = 0; i < selectedGenres.length; i++) {
-                if (selectedGenres[i] != next_genre) {
-                    new_genres.push(selectedGenres[i]);
-                }
-            }
-
-            selectedGenres = new_genres;
-
-            next_pill.classList.remove('selected');
-        } else {
-            selectedGenres.push(next_genre);
-            next_pill.classList.add('selected');
-        }
-    });
-});
-
 let accessToken = null;
 let tokenExpirationTime = 0;
 
@@ -142,7 +118,17 @@ async function generatePlaylist() {
         }
       });
 
-      displayPlaylist(unique);
+      function shuffleTracks(track_array) {
+        for (let i = track_array.length - 1; i > 0; i--) {
+            let rand_index = Math.floor(Math.random() * (i + 1));
+            [track_array[i], track_array[rand_index]] = [track_array[rand_index], track_array[i]];
+        }
+      }
+
+      shuffleTracks(unique)
+
+      let final_tracks = unique.slice(0, 12);
+      displayPlaylist(final_tracks);
       scrollToSection('playlist-section');
     } catch (error) {
         console.error("Error fetch playlist:", error);
@@ -162,7 +148,7 @@ function displayPlaylist(tracks) {
         trackElement.classList.add('track');
 
         trackElement.innerHTML = `
-        <img src="${track.album.images[0].url}" alt="Album Art" class="album-art">
+        <img src="${track.album.images[0] ? track.album.images[0].url : 'images/no-album-cover.png'}" alt="Album Art" class="album-art">
         <div class="track-info">
             <h3>${track.name}</h3>
             <p>${track.artists.map(artist => artist.name).join(', ')}</p>
@@ -172,6 +158,71 @@ function displayPlaylist(tracks) {
         container.appendChild(trackElement);
     })
 }
+
+
+document.addEventListener("DOMContentLoaded", async function() {
+    let is_mobile = false;
+    let all_genre_container = document.getElementById("genre-pills");
+    let more_button = document.getElementById("show-more");
+    let all_pills = [];
+
+    async function load_genres() {
+        try {
+            let response = await fetch("genres.json");
+            let found_genres = await response.json();
+
+            found_genres.forEach(next_genre => {
+                let next_pill = document.createElement("span");
+                next_pill.classList.add("genre-pill");
+                next_pill.setAttribute("data-value", next_genre.toLowerCase().replace(/ /g, "_"));
+                next_pill.textContent = next_genre;
+
+                next_pill.addEventListener("click", () => toggle_genre(next_pill));
+                all_genre_container.appendChild(next_pill);
+            });
+
+            all_pills = document.querySelectorAll(".genre-pill");
+            update_vis_pills();
+        } catch (error) {
+            console.log("Unable to fetch genres!");
+        }
+    }
+    function toggle_genre(pill) {
+        let next_genre = pill.getAttribute("data-value");
+
+        if (selectedGenres.includes(next_genre)) {
+            selectedGenres = selectedGenres.filter(selected => selected != next_genre);
+            pill.classList.remove("selected");
+        } else {
+            selectedGenres.push(next_genre);
+            pill.classList.add("selected");
+        }
+    }
+
+    function update_vis_pills() {
+        if (window.innerWidth < 768) {
+            let hidden_pills = Array.from(all_pills).slice(10);
+            hidden_pills.forEach(pill => {
+                pill.style.display = is_mobile ? "inline-block" : "none";
+            });
+
+            more_button.style.display = "block";
+            more_button.textContent = is_mobile ? "Show Less" : "Show More";
+        } else {
+            all_pills.forEach(pill => pill.style.display = "inline-block");
+            more_button.style.display = "none";
+            is_mobile = false;
+        }
+    }
+
+    more_button.addEventListener("click", () => {
+        is_mobile = !is_mobile;
+        update_vis_pills();
+    });
+
+    window.addEventListener("resize", update_vis_pills);
+    load_genres();
+});
 
 // TicketMaster API Logic
 async function grabEvents(artist_name) {
@@ -207,25 +258,29 @@ function displayAllEvents(events) {
     eventsContainer.innerHTML = "";
 
     if (events.length == 0) {
+        eventsContainer.classList.add('no-events');
         eventsContainer.innerHTML = `
         <div class="no-events-card">
-        <h2> No Upcoming Events </h2>
+        <h3>No Upcoming Events</h3>
         <p>We're sorry, but there are no scheduled events for this artist at the moment. Please check back later!</p>
-        <img src="images/no-events-pic.jpg" alt="No Events Found" class="no-events-image">
         </div>
         `;
         return;
     }
 
+    eventsContainer.classList.remove('no-events');
+
     events.forEach(event => {
         let next_event = document.createElement("div");
+        let next_image = event.images?.[0]?.url;
         next_event.classList.add("event-card");
 
         next_event.innerHTML = `
+        <img src="${next_image}" alt="${event.name}" class="event-image">
         <h3>${event.name}</h3>
-        <p><strong>Date:</strong> ${new Date(event.dates.start.localDate).toDateString()}</p>
-        <p><strong>Venue:</strong> ${event._embedded.venues[0].name}</p>
-        <a href="${event.url}" target=_blank>Buy Tickets</a>`;
+        <p> ${new Date(event.dates.start.localDate).toDateString()}</p>
+        <p> ${event._embedded.venues[0].name}</p>
+        <button onclick="window.open('${event.url}', '_blank')">Buy Tickets</button>`;
 
         eventsContainer.appendChild(next_event);
     });
