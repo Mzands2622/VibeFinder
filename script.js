@@ -79,12 +79,14 @@ async function getAccessToken() {
 
 
 async function generatePlaylist() {
+    let header = document.getElementById('genre-select-header');
     if (selectedGenres.length === 0) {
-        alert("Please select at least one genre.");
-        return;
+            header.innerHTML = "Please select at least one genre!";
+            return;
     }
 
     try {
+        header.innerHTML = "Select Your Favorite Genres";
         let accessToken = await getAccessToken();
         let all_tracks = [];
 
