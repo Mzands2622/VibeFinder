@@ -105,9 +105,3 @@
         justify-content: center;
     }
 }
-
-@media (max-width: 500px) {
-    #genre-pills:hover {
-        pointer-events: none;
-    }
-}
