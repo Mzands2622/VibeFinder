@@ -36,11 +36,10 @@
     z-index: 1;
     text-align: center;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-    -webkit-tap-highlight-color: transparent; /* Removes tap highlight on mobile */
-    touch-action: manipulation; /* Improves touch handling */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
-/* Only apply hover effects on devices that support hover */
 @media (hover: hover) {
     .genre-pill::before {
         content: "";
@@ -64,7 +63,6 @@
     }
 }
 
-/* Active state for better touch feedback */
 .genre-pill:active {
     transform: scale(0.95);
     transition: transform 0.1s;
@@ -111,7 +109,7 @@
 
 @media (max-width: 768px) {
     #genre-pills {
-        gap: 10px; /* Slightly reduced gap for mobile */
+        gap: 10px;
         justify-content: center;
     }
     
